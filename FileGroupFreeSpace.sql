@@ -36,7 +36,8 @@ GO
 '
 GO
 ALTER PROCEDURE dbo.FilegroupFreeSpace(
-@Threashold int = 10
+@Threashold int = 10,
+@ShowMe bit =0
 )
 AS
 BEGIN
@@ -70,6 +71,32 @@ perf INT,
 EXEC sp_MsForEachDB 'use [?];Insert into #ALL_DB_Files select db_name(),b.groupname,FILEPROPERTY([name], ''spaceused'') as Spaceused,  a.* from sysfiles a INNER JOIN sys.sysfilegroups b ON a.groupid=b.groupid'
  
 
+ IF (@ShowMe=1)
+BEGIN
+	select  
+	dbname,
+	FileGroupName,
+	SUM(size)*CONVERT(FLOAT,8) / 1024.0 as totalsizeMB
+	,SUM(spaceused)*CONVERT(FLOAT,8) / 1024.0 as usedsize
+	,(SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100 as PercentFreePerByGroup
+	,count(1) as FileCountInTheFileGroup
+	from #ALL_DB_Files
+	where dbname <>'tempdb'
+	group by dbname,FileGroupName
+	having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<15
+	order by 5
+
+
+
+
+
+	SELECT  DISTINCT
+	dovs.volume_mount_point AS Drive,
+	CONVERT(INT,dovs.available_bytes/1048576.0) AS FreeSpaceInMB
+	FROM sys.master_files mf
+	CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.file_id) dovs
+	ORDER BY 1 ASC
+END
 
 
 
@@ -101,38 +128,7 @@ BEGIN
 
 END
 
- /*
- DEBUG:
-
-select  
-dbname,
-FileGroupName,
-SUM(size)*CONVERT(FLOAT,8) / 1024.0 as totalsizeMB
-,SUM(spaceused)*CONVERT(FLOAT,8) / 1024.0 as usedsize
-,(SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100 as PercentFreePerByGroup
-,count(1) as FileCountInTheFileGroup
-from #ALL_DB_Files
-where dbname <>'tempdb'
-group by dbname,FileGroupName
-having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<15
-order by 5
-
-
-
-
-
-SELECT  DISTINCT
-dovs.volume_mount_point AS Drive,
-CONVERT(INT,dovs.available_bytes/1048576.0) AS FreeSpaceInMB
-FROM sys.master_files mf
-CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.file_id) dovs
-ORDER BY 1 ASC
-
-
-
-
-
-*/ 
+ 
 END
 
 
