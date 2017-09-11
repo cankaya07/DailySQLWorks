@@ -4,6 +4,13 @@ GO
 print 'You can check your Filegroup''s free size easily. Up to date scripts code -> https://github.com/cankaya07/DailySQLWorks 
 I shared some code sample with my approach
 
+Sample 0:
+exec dbo.FilegroupFreeSpace 10 under 10 percent free space filegroups will be logged your errorlog 
+
+Sample 1:
+exec dbo.FilegroupFreeSpace 10,1 under 10 percent free space filegroups will be logged your errorlog and show resultset
+
+
 #######
 basically script calculates all filegroups total size and free per database even calculate percentage :) 
 after that write some log records to errorlog related with your db and your threashold. 
