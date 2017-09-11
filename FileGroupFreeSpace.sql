@@ -1,11 +1,51 @@
-alter procedure dbo.FilegroupFreeSpace
+IF OBJECT_ID('dbo.FilegroupFreeSpace') IS NULL
+  EXEC ('CREATE PROCEDURE dbo.FilegroupFreeSpace AS RETURN 0;');
+GO
+print 'You can check your Filegroup''s free size easily. Up to date scripts code -> https://github.com/cankaya07/DailySQLWorks 
+I shared some code sample with my approach
+
+#######
+basically script calculates all filegroups total size and free per database even calculate percentage :) 
+after that write some log records to errorlog related with your db and your threashold. 
+I prefer to you execute script daily for example 10pm and use sql agent alert and notification. 
+#####
+
+--Add message
+USE [master]
+GO
+EXEC sp_addmessage @msgnum = 75006, @severity = 1,   
+   @msgtext = N''"%s" Filegroup has %s percent free space in %s.'',   
+   @lang = ''us_english'';  
+
+--Add alert 
+USE [msdb]
+GO
+EXEC msdb.dbo.sp_add_alert @name=N''File_Group_Free_Space_Percent'', 
+		@message_id=75006, 
+		@severity=0, 
+		@enabled=1, 
+		@delay_between_responses=0, 
+		@include_event_description_in=1
+
+--add notification
+EXEC msdb.dbo.sp_add_notification @alert_name=N''File_Group_Free_Space_Percent'', @operator_name=N''YOUR_OPERATORNAME'', @notification_method = 7
+
+--add job daily at 10 pm
+exec dbo.FilegroupFreeSpace
+GO
+'
+GO
+ALTER PROCEDURE dbo.FilegroupFreeSpace(
+@Threashold int = 10
+)
 AS
 BEGIN
+
 IF OBJECT_ID('tempdb..#ALL_DB_Files') IS NOT NULL
   DROP TABLE #ALL_DB_Files; 
 
-DECLARE @DbName nvarchar(200), @FreeSpacePercent decimal(18,2), @FileGroupName varchar(100)
- 
+DECLARE @DbName nvarchar(200), @FreeSpacePercent decimal(18,2), @FileGroupName varchar(100), @PercentStr varchar(10);
+
 CREATE TABLE #ALL_DB_Files (
 dbname SYSNAME,
 [FileGroupName] nvarchar(200),
@@ -27,8 +67,11 @@ EXEC sp_MsForEachDB 'use [?];Insert into #ALL_DB_Files select db_name(),b.groupn
 
 
 
-  --loop through all problem databases and raise error
-WHILE EXISTS(SELECT NULL FROM #ALL_DB_Files where dbname<>'tempdb')
+--loop through all rows
+WHILE EXISTS(SELECT NULL FROM #ALL_DB_Files 
+								where dbname<>'tempdb' 
+								group by dbname,FileGroupName
+								having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<@Threashold)
 BEGIN
 	
 	--work through each database
@@ -39,10 +82,12 @@ BEGIN
 	FROM #ALL_DB_Files
 		where dbname <>'tempdb'
 		group by dbname,FileGroupName
-		having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<15
+		having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<@Threashold
+
+		set @PercentStr= cast(@FreeSpacePercent as varchar(10));
 
 	--if we have databases that have reached our threshold, then we raise the alert
-	RAISERROR  (75006, 10,1,@FileGroupName,@FreeSpacePercent,@DbName) WITH LOG;
+	RAISERROR  (75006, 10,1,@FileGroupName,@PercentStr,@DbName) WITH LOG;
 
 	--remove the processed entry
 	DELETE FROM #ALL_DB_Files WHERE dbname = @DbName;
@@ -50,6 +95,7 @@ BEGIN
 END
 
  /*
+ DEBUG:
 
 select  
 dbname,
@@ -74,5 +120,16 @@ CONVERT(INT,dovs.available_bytes/1048576.0) AS FreeSpaceInMB
 FROM sys.master_files mf
 CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.file_id) dovs
 ORDER BY 1 ASC
+
+
+
+
+
 */ 
 END
+
+
+
+
+
+ 
