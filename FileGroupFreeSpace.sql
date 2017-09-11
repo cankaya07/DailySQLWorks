@@ -42,7 +42,7 @@ BEGIN
 		having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<15
 
 	--if we have databases that have reached our threshold, then we raise the alert
-	RAISERROR  (75006, 10,1,'FGData01',20,'master') WITH LOG;
+	RAISERROR  (75006, 10,1,@FileGroupName,@FreeSpacePercent,@DbName) WITH LOG;
 
 	--remove the processed entry
 	DELETE FROM #ALL_DB_Files WHERE dbname = @DbName;
