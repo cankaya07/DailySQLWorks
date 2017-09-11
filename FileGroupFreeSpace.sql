@@ -40,6 +40,13 @@ ALTER PROCEDURE dbo.FilegroupFreeSpace(
 )
 AS
 BEGIN
+	--adding necessary message
+	IF NOT EXISTS(select * from sys.sysmessages where error=75006)
+	BEGIN
+		EXEC sp_addmessage @msgnum = 75006, @severity = 1,   
+		   @msgtext = N'"%s" Filegroup has %s percent free space in %s.',   
+		   @lang = 'us_english';  
+	END
 
 IF OBJECT_ID('tempdb..#ALL_DB_Files') IS NOT NULL
   DROP TABLE #ALL_DB_Files; 
