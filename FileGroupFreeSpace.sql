@@ -44,7 +44,8 @@ GO
 GO
 ALTER PROCEDURE dbo.FilegroupFreeSpace(
 @Threashold int = 10,
-@ShowMe bit =0
+@ShowMe bit =0,
+@WriteLog bit =1
 )
 AS
 BEGIN
@@ -90,7 +91,7 @@ BEGIN
 	from #ALL_DB_Files
 	where dbname <>'tempdb'
 	group by dbname,FileGroupName
-	having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<15
+	having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<@Threashold
 	order by 5
 
 
@@ -107,32 +108,34 @@ END
 
 
 
-
---loop through all rows
-WHILE EXISTS(SELECT NULL FROM #ALL_DB_Files 
-								where dbname<>'tempdb' 
-								group by dbname,FileGroupName
-								having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<@Threashold)
+IF(@WriteLog=1)
 BEGIN
+	--loop through all rows
+	WHILE EXISTS(SELECT NULL FROM #ALL_DB_Files 
+									where dbname<>'tempdb' 
+									group by dbname,FileGroupName
+									having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<@Threashold)
+	BEGIN
 	
-	--work through each database
-	SELECT TOP 1
-		@DbName = dbname,
-		@FreeSpacePercent = (SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100,
-		@FileGroupName = FileGroupName
-	FROM #ALL_DB_Files
-		where dbname <>'tempdb'
-		group by dbname,FileGroupName
-		having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<@Threashold
+		--work through each database
+		SELECT TOP 1
+			@DbName = dbname,
+			@FreeSpacePercent = (SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100,
+			@FileGroupName = FileGroupName
+		FROM #ALL_DB_Files
+			where dbname <>'tempdb'
+			group by dbname,FileGroupName
+			having ((SUM(size)-SUM(spaceused))/cast(SUM(size) as decimal(18,2))*100)<@Threashold
 
-		set @PercentStr= cast(@FreeSpacePercent as varchar(10));
+			set @PercentStr= cast(@FreeSpacePercent as varchar(10));
 
-	--if we have databases that have reached our threshold, then we raise the alert
-	RAISERROR  (75006, 10,1,@FileGroupName,@PercentStr,@DbName) WITH LOG;
+		--if we have databases that have reached our threshold, then we raise the alert
+		RAISERROR  (75006, 10,1,@FileGroupName,@PercentStr,@DbName) WITH LOG;
 
-	--remove the processed entry
-	DELETE FROM #ALL_DB_Files WHERE dbname = @DbName;
+		--remove the processed entry
+		DELETE FROM #ALL_DB_Files WHERE dbname = @DbName;
 
+	END
 END
 
  
