@@ -2,8 +2,16 @@
 $FreespaceGB = @{Name="FreeSpace(GB)";expression={[math]::round(($_.FreeSpace / 1073741824),2)}}
 $FreePerc = @{Name="Free(%)";expression={[math]::round(((($_.FreeSpace / 1073741824)/($_.Capacity / 1073741824)) * 100),0)}}
 
-$volumes = Get-WmiObject  win32_volume | Where-object {$_.DriveLetter -eq $null -and $_.SystemVolume -eq $false}
+$volumes = Get-WmiObject  win32_volume | Where-object {$_.SystemVolume -eq $false}
 $a = $volumes | Select  Name,$Capacity, $FreespaceGB, $FreePerc  
+$Thread = "-t"+(((get-counter "\Processor(*)\% idle time").countersamples | select instancename).length -1)
+$OutstandingIO = "-o32"
+$CapacityParameter = "-c20G"
+$Time = "-d30"
+$NumberOfTests = 64
+$blocksize = 8,64
+$writeRead =0,100
+
 
 write-host "TEST RESULTS (also logged in .\output.txt)" -foregroundcolor yellow
 
@@ -14,71 +22,18 @@ foreach($vol in $a)
     # Reset test counter
     $counter = 0
     # Use 1 thread / core
-
-
-    $Thread = "-t"+(((get-counter "\Processor(*)\% idle time").countersamples | select instancename).length -1)
- 
-
-
-    # Set time in seconds for each run
-
-
-    # 10-120s is fine
-
-
-    $Time = "-d1"
-
-
- 
-
-
-    # Outstanding IOs
-
-
-    # Should be 2 times the number of disks in the RAID
-
-
-    # Between  8 and 16 is generally fine
-
-
-    $OutstandingIO = "-o16"
-
-
- 
-
-
-    # Disk preparation
-
-
-    # Delete testfile.dat if it exists
-
-
-    # The test will use all free space -2GB
-
-
- 
-
+    
 
     $IsDir = test-path -path "$Disk\TestDiskSpd"
 
 
-    $isdir
-
-
     if ($IsDir -like "False"){new-item -itemtype directory -path "$Disk\TestDiskSpd\"}
 
-
     # Just a little security, in case we are working on a compressed drive ...
-
-
     compact /u /s $Disk\TestDiskSpd\
 
 
- 
-
-
     $Cleaning = test-path -path "$Disk\TestDiskSpd\testfile.dat"
-
 
     if ($Cleaning -eq "True")
     {
@@ -90,45 +45,12 @@ foreach($vol in $a)
 $Capacity = $vol.'Capacity(GB)' - 2
 
 
-$CapacityParameter = "-c20G"
+
 
 # Initialize outpout file
-
-
 $date = get-date
-
-
  
 
-
-# Add the tested disk and the date in the output file
-
-
-#"Disque $disk, $date" >> ./output.txt
-
-
- 
-
-
-# Add the headers to the output file
-
-
-
-
-
- 
-
-
-# Number of tests
-
-
-# Multiply the number of loops to change this value
-
-
-# By default there are : (4 blocks sizes) X (2 for read 100% and write 100%) X (2 for Sequential and Random) X (4 Runs of each)
-
-
-$NumberOfTests = 64
 
 
  
@@ -145,7 +67,7 @@ $NumberOfTests = 64
 # We will run the tests with 4K, 8K, 64K and 512K blocks
 
 
-(4,8,64,512) | % { 
+($blocksize) | % { 
 
 
 $BlockParameter = ("-b"+$_+"K")
@@ -160,7 +82,7 @@ $Blocks = ("Blocks "+$_+"K")
 # We will do Read tests and Write tests
 
 
-  (0,100) | % {
+($writeRead) | % {
 
 
       if ($_ -eq 0){$IO = "Read"}
@@ -239,33 +161,15 @@ $Blocks = ("Blocks "+$_+"K")
 
 
       # A progress bar, for the fun
-
-
       Write-Progress -Activity ".\diskspd.exe $CapacityParameter $Time $AccessParameter $WriteParameter $Thread $OutstandingIO $BlockParameter -h -L $Disk\TestDiskSpd\testfile.dat" -status "Test in progress" -percentComplete ($counter / $NumberofTests * 100)
-
-
-     
-
-
-      # Remove comment to check command line ".\diskspd.exe $CapacityParameter $Time $AccessParameter $WriteParameter $Thread -$OutstandingIO $BlockParameter -h -L $Disk\TestDiskSpd\testfile.dat"
-
-
-     
-
-
-      # We output the values to the text file
-
-
-      “Test $Counter,$Disk,$IO,$type,$Blocks,Run $_,$iops,$mbps,$latency,$cpu"  >> ./output.txt
+      "Test $Counter,$Disk,$IO,$type,$Blocks,Run $_,$iops,$mbps,$latency,$cpu"  >> ./output.txt
 
 
  
 
 
       # We output a verbose format on screen
-
-
-      “Test $Counter, $Disk, $IO, $type, $Blocks, Run $_, $iops iops, $mbps MB/sec, $latency ms, $cpu CPU"
+      "Test $Counter, $Disk, $IO, $type, $Blocks, Run $_, $iops iops, $mbps MB/sec, $latency ms, $cpu CPU"
 
 
 }
