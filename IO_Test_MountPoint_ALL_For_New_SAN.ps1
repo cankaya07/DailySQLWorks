@@ -5,6 +5,9 @@ $FreePerc = @{Name="Free(%)";expression={[math]::round(((($_.FreeSpace / 1073741
 $volumes = Get-WmiObject  win32_volume | Where-object {$_.DriveLetter -eq $null -and $_.SystemVolume -eq $false}
 $a = $volumes | Select  Name,$Capacity, $FreespaceGB, $FreePerc  
 
+write-host "TEST RESULTS (also logged in .\output.txt)" -foregroundcolor yellow
+
+"Test N#, Drive, Operation, Access, Blocks, Run N#, IOPS, MB/sec, Latency ms, CPU %" >> ./output.txt
 foreach($vol in $a)
 {
     $Disk = $vol.Name
@@ -14,7 +17,6 @@ foreach($vol in $a)
 
 
     $Thread = "-t"+(((get-counter "\Processor(*)\% idle time").countersamples | select instancename).length -1)
-    $Thread
  
 
 
@@ -79,11 +81,8 @@ foreach($vol in $a)
 
 
     if ($Cleaning -eq "True")
-    {"Removing current testfile.dat from drive"
-
-
+    {
       remove-item $Disk\TestDiskSpd\testfile.dat
-        Write-Host $vol.Name
     }
  
 
@@ -92,46 +91,6 @@ $Capacity = $vol.'Capacity(GB)' - 2
 
 
 $CapacityParameter = "-c20G"
-
-
-if ($vol.'FreeSpace(GB)' -lt "4")
-
-
-{
-
-
-       "Not enough space on the Disk "+$Disk+" ! More than 4GB needed"
-
-
-       
-
-
-}
-
-
- 
-
-
-write-host "You are about to test $Disk which has "+$vol.'FreeSpace(GB)'+" GB free, "
- 
-
- 
-
-
-"   "
-
-
-"Initialization can take some time, we are generating a $vol.'Capacity(GB)' GB file..."
-
-
-"  "
-
-
- 
-
-
- 
-
 
 # Initialize outpout file
 
@@ -145,7 +104,7 @@ $date = get-date
 # Add the tested disk and the date in the output file
 
 
-"Disque $disk, $date" >> ./output.txt
+#"Disque $disk, $date" >> ./output.txt
 
 
  
@@ -154,7 +113,7 @@ $date = get-date
 # Add the headers to the output file
 
 
-“Test N#, Drive, Operation, Access, Blocks, Run N#, IOPS, MB/sec, Latency ms, CPU %" >> ./output.txt
+
 
 
  
@@ -173,13 +132,6 @@ $NumberOfTests = 64
 
 
  
-
-
-"  "
-
-
-write-host "TEST RESULTS (also logged in .\output.txt)" -foregroundcolor yellow
-
 
  
 
