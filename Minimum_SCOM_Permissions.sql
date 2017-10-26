@@ -22,7 +22,7 @@ USE [msdb];
 EXEC sp_addrolemember @rolename='PolicyAdministratorRole', @membername='NT SERVICE\HealthService';
 EXEC sp_addrolemember @rolename='SQLAgentReaderRole', @membername='NT SERVICE\HealthService';
 
-DECLARE @command2 nvarchar(MAX);
+DECLARE @command2 nvarchar(MAX) ='';
 SELECT @command2 = @command2 + 'USE ['+db.name+'];
 CREATE USER [NT SERVICE\HealthService] 
 FOR LOGIN [NT SERVICE\HealthService];'
