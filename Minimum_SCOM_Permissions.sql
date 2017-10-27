@@ -3,9 +3,6 @@
 --23.10.2017
 
 
-
-
-
 USE [master]
 GO
 IF NOT EXISTS (select * from sys.syslogins where loginname='NT SERVICE\HealthService')
@@ -23,12 +20,14 @@ EXEC sp_addrolemember @rolename='PolicyAdministratorRole', @membername='NT SERVI
 EXEC sp_addrolemember @rolename='SQLAgentReaderRole', @membername='NT SERVICE\HealthService';
 
 DECLARE @command2 nvarchar(MAX) ='';
-SELECT @command2 = @command2 + 'USE ['+db.name+'];
-CREATE USER [NT SERVICE\HealthService] 
-FOR LOGIN [NT SERVICE\HealthService];'
+SELECT @command2 = @command2 +
+'USE ['+db.name+'];
+ IF NOT EXISTS (select * from sys.syslogins where loginname=''NT SERVICE\HealthService'')
+BEGIN
+CREATE USER [NT SERVICE\HealthService] FOR LOGIN [NT SERVICE\HealthService];
+END'
 FROM sys.databases db 
-left join sys.dm_hadr_availability_replica_states hadrstate 
-on db.replica_id = hadrstate.replica_id 
+	left join sys.dm_hadr_availability_replica_states hadrstate on db.replica_id = hadrstate.replica_id 
 WHERE db.database_id <> 2 
 AND db.user_access = 0 
 AND db.state = 0 
