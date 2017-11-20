@@ -1,3 +1,4 @@
+--https://social.msdn.microsoft.com/Forums/sqlserver/en-US/444c3bab-985b-40a0-8362-2742df1a6577/error-viewing-the-execution-option-of-a-report?forum=sqlreportingservices
 USE master
 
 GO
