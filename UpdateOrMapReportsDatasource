@@ -1,0 +1,10 @@
+$reports = Get-RsFolderContent -ReportServerUri http://reportserver/ReportServer -Path "/path1/path2" | where TypeName -eq "Report" | Select Path
+
+foreach($trp in  $reports)
+{
+    Write-Host $trp.Path
+    $reportDataSourceName =  Get-RsItemDataSource -ReportServerUri http://reportserver/ReportServer -RsItem $trp.Path | Select Name
+    Set-RsDataSourceReference -Path $trp.Path -DataSourceName $reportDataSourceName.Name -DataSourcePath "/datasourcepath`
+   
+}
+ 
