@@ -1,0 +1,65 @@
+/*
+TO DO
+connect all instances via sqlcmd and collect all filegroup and files information
+and then do some check ops
+
+
+*/
+--we are assuming all instances with the same directory and datafile confs
+--take care- 0 growth rate means dont extend my file which autogrow setted as 0
+
+Declare @DbName varchar(200)='IB_EVRAK'
+Declare @FileGroup varchar(200) ='EVRAKFILEFG'
+Declare @IncreaseFilePercentage decimal(18,2) =1.20
+declare @NewFileSize bigint
+
+select 
+	@NewFileSize=((SUM(cast(size as bigint)*8))-SUM(CASE WHEN f.growth=0 THEN cast(size as bigint)*8 END))*@IncreaseFilePercentage/SUM(CASE WHEN f.growth=0 THEN 0 ELSE 1 END) 
+from 
+	sys.master_files f	
+	INNER JOIN sys.filegroups sf ON f.data_space_id=sf.data_space_id 
+WHERE 	
+	sf.name=@FileGroup 
+	and database_id= DB_ID(@DbName)
+ 
+ IF OBJECT_ID('tempdb..#TmpDriveFreeSpace', 'U') IS NOT NULL 
+    DROP TABLE #TmpDriveFreeSpace
+
+SELECT  DISTINCT
+dovs.volume_mount_point AS Drive,
+CONVERT(INT,dovs.available_bytes/1048576.0) AS FreeSpaceInMB
+into #TmpDriveFreeSpace
+FROM sys.master_files mf
+CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.file_id) dovs
+ORDER BY 1 ASC
+
+--select 
+--	tfs.Drive,
+--	SUM((@NewFileSize-(f.size*8.0)))/1024 as neededExtraSpaceMB
+--	--CASE WHEN (tfs.FreeSpaceInMB > (SUM((@NewFileSize-(f.size*8))))*1.2) THEN 'OK' ELSE 'ERROR' END
+--from 
+--	sys.master_files f
+--	INNER JOIN sys.filegroups sf ON f.data_space_id=sf.data_space_id
+--	LEFT JOIN #TmpDriveFreeSpace tfs ON CHARINDEX(tfs.Drive, f.physical_name)>0  
+--WHERE
+--	sf.name=@FileGroup 
+--	and database_id= DB_ID(@DbName) 
+--	and f.growth<>0
+--GROUP BY 
+--	tfs.Drive
+
+--select * from #TmpDriveFreeSpace
+
+select 
+	f.physical_name,
+	 'ALTER DATABASE ['+@DbName+'] MODIFY FILE ( NAME = N'''+f.name+''', SIZE = '+cast(@NewFileSize as varchar(50))+'KB )',
+	(@NewFileSize-(f.size*8.0)) as neededExtraSpaceKB
+from 
+	sys.master_files f
+	INNER JOIN sys.filegroups sf ON f.data_space_id=sf.data_space_id
+WHERE
+	sf.name=@FileGroup 
+	and database_id= DB_ID(@DbName) 
+	and f.growth<>0
+
+	  DROP TABLE #TmpDriveFreeSpace
