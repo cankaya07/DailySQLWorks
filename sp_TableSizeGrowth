@@ -1,11 +1,27 @@
-USE [SQLAdmin]
-GO
 /****** Object:  StoredProcedure [can].[sp_TableSizeGrowth]    Script Date: 6/8/2020 4:47:11 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER PROCEDURE [can].[sp_TableSizeGrowth] 
+CREATE TABLE [dbo].[TableSizeGrowth](
+	[id] [int] IDENTITY(1,1) NOT NULL,
+	[table_schema] [nvarchar](256) NULL,
+	[table_name] [nvarchar](256) NULL,
+	[table_rows] [bigint] NULL,
+	[reserved_space] [bigint] NULL,
+	[data_space] [bigint] NULL,
+	[index_space] [bigint] NULL,
+	[unused_space] [bigint] NULL,
+	[date] [datetime] NULL,
+	[database_name] [nvarchar](50) NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[TableSizeGrowth] ADD  CONSTRAINT [DF_TableSizeGrowth_date]  DEFAULT (dateadd(day,(0),datediff(day,(0),getdate()))) FOR [date]
+GO
+
+ 
+CREATE PROCEDURE [sp_TableSizeGrowth] 
 (
 @DatabaseName VARCHAR(50)
 )
@@ -57,9 +73,8 @@ BEGIN
  )
  
  --LOOP THROUGH STATISTICS FOR EACH TABLE
- EXEC ('INSERT #table(table_schema, table_name)  SELECT    table_schema, table_name FROM '+@DatabaseName+'.INFORMATION_SCHEMA.TABLES');
+ EXEC ('INSERT #table(table_schema, table_name)  SELECT    table_schema, table_name FROM '+@DatabaseName+'.INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE=''BASE TABLE''');
  --WHERE table_schema + '.' + table_name IN ('HumanResources.Employee','Production.Product', 'Purchasing.Vendor') --INSERT TABLE NAMES TO MONITOR
- 
 
  IF EXISTS(Select 1 from #table)
  begin
@@ -123,21 +138,7 @@ FROM #results
  SET NOCOUNT OFF
 END
 
---CREATE TABLE [dbo].[TableSizeGrowth](
---	[id] [int] IDENTITY(1,1) NOT NULL,
---	[table_schema] [nvarchar](256) NULL,
---	[table_name] [nvarchar](256) NULL,
---	[table_rows] [bigint] NULL,
---	[reserved_space] [bigint] NULL,
---	[data_space] [bigint] NULL,
---	[index_space] [bigint] NULL,
---	[unused_space] [bigint] NULL,
---	[date] [datetime] NULL,
---	[database_name] [nvarchar](50) NULL
---) ON [PRIMARY]
---GO
 
---ALTER TABLE [dbo].[TableSizeGrowth] ADD  CONSTRAINT [DF_TableSizeGrowth_date]  DEFAULT (dateadd(day,(0),datediff(day,(0),getdate()))) FOR [date]
---GO
+GO
 
- 
+exec sp_MSforeachdb 'USE [?] IF DB_ID(''?'') > 4 BEGIN exec master..sp_TableSizeGrowth ''?'' END '
