@@ -1,0 +1,42 @@
+USE [SQLAdmin]
+GO
+/****** Object:  StoredProcedure [can].[sp_DatabaseFileSizeGrowth]    Script Date: 6/8/2020 4:59:54 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROC [can].[sp_DatabaseFileSizeGrowth]
+AS
+BEGIN
+SET NOCOUNT ON
+INSERT INTO DatabaseFileSize
+(
+[database_id],
+[file_id],
+[file_type_desc],
+[name],
+[physical_name],
+[state_desc],
+[size],
+[max_size],
+[growth],
+[is_sparse],
+[is_percent_growth],
+[collect_date]
+)
+SELECT
+[database_id],
+[file_id],
+[type_desc],
+[name],
+[physical_name],
+[state_desc],
+[size],
+[max_size],
+[growth],
+[is_sparse],
+[is_percent_growth],
+GETDATE()
+FROM sys.master_files
+SET NOCOUNT OFF
+END
