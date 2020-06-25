@@ -14,7 +14,7 @@ exec dbo.FilegroupFreeSpace 10,1 under 10 percent free space filegroups will be 
 #######
 basically script calculates all filegroups total size and free per database even calculate percentage :) 
 after that write some log records to errorlog related with your db and your threashold. 
-I prefer to you execute script daily for example 10pm and use sql agent alert and notification..
+I prefer to you execute script daily for example 10pm and use sql agent alert and notification. 
 #####
 
 --Add message
