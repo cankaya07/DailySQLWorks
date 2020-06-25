@@ -76,7 +76,7 @@ perf INT,
 [name] SYSNAME NOT NULL,
 [filename] NVARCHAR(260) NOT NULL
 )
-EXEC sp_MsForEachDB 'use [?];Insert into #ALL_DB_Files select db_name(),b.groupname,FILEPROPERTY([name], ''spaceused'') as Spaceused,  a.* from sysfiles a INNER JOIN sys.sysfilegroups b ON a.groupid=b.groupid'
+EXEC sp_MsForEachDB 'use [?];Insert into #ALL_DB_Files select db_name(),b.groupname,FILEPROPERTY([name], ''spaceused'') as Spaceused,  a.* from sysfiles a INNER JOIN sys.sysfilegroups b ON a.groupid=b.groupid INNER JOIN sys.databases dbs on dbs.name=db_name() where b.status <> 8 and dbs.is_read_only=0'
  
 
  IF (@ShowMe=1)
